@@ -1,0 +1,162 @@
+fmod CARD is
+
+	sorts Card Color Type .
+	
+	ops red green yellow blue all : -> Color [ctor] .
+	ops 0 1 2 3 4 5 6 7 8 9 reverse stop plus2 plus4 change : -> Type [ctor] .
+	op card : Type Color -> Card [ctor] .
+	
+	var Ca : Card .
+	var T : Type .
+	var C : Color .
+	
+	op getType : Card -> Type .
+	eq getType(card(T, C)) = T .
+	
+	op getColor : Card -> Color .
+	eq getColor(card(T,C)) = C .
+	
+	op isAction : Card -> Bool .
+	eq isAction(Ca) = getType(Ca) == reverse or getType(Ca) == stop or  getType(Ca) == plus2 or  getType(Ca) == plus4 or getType(Ca) == change .
+	
+	op isNumber : Card -> Bool .
+	eq isNumber(Ca) = not isAction(Ca) .
+endfm
+
+fmod DECK is 
+
+	pr CARD .
+	pr NAT .
+	
+	sort Deck .
+	subsort Card < Deck .
+	
+	var D : Deck .
+	var C : Card .
+	
+	op _|_ : Deck Deck -> Deck [assoc] .
+	
+	op example : -> Deck .
+	eq example = card(0, red) | card(1, red) | card(2, red) .
+	
+	op insertFirst : Deck Card -> Deck .
+	eq insertFirst(D, C) = C | D .
+	
+	op seeFirst : Deck -> Card .
+	eq seeFirst((C | D)) = C .
+	
+	op removeFirst : Deck -> Deck .
+	eq removeFirst((C | D)) = D .
+	
+	op |_| : Deck -> Nat .
+	eq | D | = $c(D) .
+	
+	op $c : Deck -> Nat .
+	eq $c((C | D)) = 1 + $c(D) .
+	eq $c(C) = 1 .
+
+endfm
+
+fmod HAND is 
+
+	pr DECK .
+	
+	sort Hand .
+	subsort Card < Hand .
+	
+	op empty : -> Hand [ctor] .
+	op _~_ : Hand Hand -> Hand [assoc comm] .
+	
+	var H : Hand .
+	var C : Card .
+	
+	op exampleHand : -> Hand .
+	eq exampleHand = card(1,red) ~ card(plus2, yellow) ~ card(2,blue) .
+	
+	op containsPlusTwo : Hand -> Bool .
+	ceq containsPlusTwo(C ~ H) = true if getType(C) == plus2 .
+	eq containsPlusTwo(C ~ H) = containsPlusTwo(H) . 
+	eq containsPlusTwo(H) = getType(H) == plus2 .
+
+endfm
+
+mod GAME is
+
+	pr HAND .
+	pr INT .
+
+	sort Game .
+	
+	op game : Hand Hand Hand Deck Deck Bool Bool Int Bool -> Game [ctor] . 
+	
+	op exampleGame : -> Game .
+	eq exampleGame = game(
+			(card(1,red) ~ card(1,red) ~ card(1,red)) ~ empty,
+			(card(2,red) ~ card(2,red) ~ card(2,red)) ~ empty,
+			(card(3,red) ~ card(3,red) ~ card(plus4,all)) ~ empty,
+			(card(4,red) | card(4,blue) | card(4,yellow) | card(8,red) | card(8,blue) | card(8,yellow)) | card(9,red) | card(9,blue) | card(9,yellow),
+			(card(5,red) | card(5,blue) | card(5,yellow)),
+			false, false, 0, false
+		) .
+	
+	vars A B C : Hand .
+	var Cou : Int .
+	vars D G : Deck .
+	vars P P' P'' : Bool .
+	vars Ca Ca' : Card .
+	var H : Hand .
+	vars Col Col' : Color .
+	vars T T' : Type .
+	
+	op getCurrentPlayer : Game -> Hand .
+	eq getCurrentPlayer(game(A,B,C,D,G,P,P',Cou, P'')) = A .
+	
+	op possibleMove : Hand Card -> Bool .
+	ceq possibleMove(Ca ~ H, Ca') = true if getColor(Ca) == getColor(Ca') or getType(Ca) == getType(Ca') or getColor(Ca) == all .
+	eq possibleMove(Ca, Ca') = false .
+	eq possibleMove(Ca ~ H, Ca') = possibleMove(H, Ca') .
+	
+	crl [activate-plustwo-draw] :
+		game(A,B,C,D,(card(plus2, Col) | G), false, false, Cou, false) => game(A,B,C,D,(card(plus2, Col) | G),false, false, Cou, true) 
+			if not containsPlusTwo(A) .
+				
+	crl [draw-two] :
+		game(A,B,C,(Ca | Ca' | D), G, false, false, Cou, true) => game(Ca ~ Ca' ~ A,B,C,D,G,false, false, Cou - 2, true) 
+			if Cou > 0 .
+			
+	rl [deactivate-plustwo-draw] :
+		game(A,B,C,D,G, false, false, 0, true) => game(A,B,C,D,G,false, false, 0, false) .
+	
+	rl [throw-color] :
+		game(card(T, Col) ~ H, B, C, D, (card(T', Col) | G), false, P, 0, false) => game(H, B, C, D, (card(T, Col) | card(T', Col) | G), true, P, 0, false) .
+	
+	rl [throw-type] :
+		game(card(T, Col) ~ H, B, C, D, (card(T, Col') | G), false, P, 0, false) => game(H, B, C, D, (card(T, Col) | card(T, Col') | G), true, P, 0, false) .
+		
+	rl [throw-plusfour] :
+		game(card(plus4, all) ~ H, B, C, D, G, false, P, 0, false) => game(B, C, H, D, card(plus4, red) | G, false, false, 4, true) .
+		
+	rl [turn-action-plustwo-on-general] :
+		game(A,B,C,D,(card(plus2, Col) | G), true, P, Cou, false) => game(B,C,A,D,(card(plus2, Col) | G), false, false,Cou + 2, false) .
+		
+	crl [turn-action-plustwo-on-plustwo] :
+		game(card(plus2, Col) ~ A,B,C,D,(Ca | G), P, false, Cou, false) => game(B,C,A,D,(card(plus2, Col) | Ca | G),false, false, Cou + 2, false) 
+			if getType(Ca) == plus2 .
+		
+	crl [turn-action-reverse] :
+		game(A,B,C,D,(Ca | G), true, P, 0, false) => game(C,B,A,D,(Ca | G),false, false, 0, false) 
+			if getType(Ca) == reverse .
+		
+	crl [turn-action-stop] :
+		game(A,B,C,D,(Ca | G), true, P, 0,false) => game(C,A,B,D,(Ca | G),false, false, 0,false) 
+			if getType(Ca) == stop .
+		
+	crl [turn-number] :
+		game(A,B,C,D,(Ca | G), true, P, 0,false) => game(B,C,A,D,(Ca | G),false, false, 0,false) 
+			if isNumber(Ca) .
+		
+	crl [draw] :
+		game(A, B, C, (Ca | D), (Ca' | G), false, false, 0 ,false) => game(A ~ Ca, B, C, D, (Ca' | G), false, true, 0, false) 
+			if not possibleMove(A, Ca') .
+
+endm
