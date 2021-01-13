@@ -34,6 +34,7 @@ fmod DECK is
 	var D : Deck .
 	var C : Card .
 	
+	op > : -> Deck [ctor] .
 	op _|_ : Deck Deck -> Deck [assoc] .
 	
 	op example : -> Deck .
@@ -69,15 +70,30 @@ fmod HAND is
 	
 	var H : Hand .
 	var C : Card .
+	var R G B Y : Nat .
 	
 	op exampleHand : -> Hand .
-	eq exampleHand = card(1,red) ~ card(plus2, yellow) ~ card(2,blue) .
+	eq exampleHand = card(plus2, green) ~ card(plus2, green) ~ card(1,red) ~ card(plus2, yellow) ~ card(2,blue) ~ empty .
 	
 	op containsPlusTwo : Hand -> Bool .
 	ceq containsPlusTwo(C ~ H) = true if getType(C) == plus2 .
 	eq containsPlusTwo(C ~ H) = containsPlusTwo(H) . 
 	eq containsPlusTwo(H) = getType(H) == plus2 .
-
+	
+	op getMostFrequentColor : Hand -> Color .
+	eq getMostFrequentColor(H) = $gmfc(H, 0, 0, 0, 0) .
+	
+	op $gmfc : Hand Nat Nat Nat Nat -> Color .
+	ceq $gmfc(H, R, G, B, Y) = red if H == empty and R >= G and R >= B and R >= Y .
+	ceq $gmfc(H, R, G, B, Y) = green if H == empty and G >= R and G >= B and G >= Y .
+	ceq $gmfc(H, R, G, B, Y) = blue if H == empty and B >= R and B >= G and B >= Y .
+	ceq $gmfc(H, R, G, B, Y) = yellow if H == empty and Y >= R and Y >= G and Y >= B .
+	ceq $gmfc(C ~ H, R, G, B, Y) = $gmfc(H, R + 1, G, B, Y) if getColor(C) == red .
+	ceq $gmfc(C ~ H, R, G, B, Y) = $gmfc(H, R, G + 1, B, Y) if getColor(C) == green .
+	ceq $gmfc(C ~ H, R, G, B, Y) = $gmfc(H, R, G, B + 1, Y) if getColor(C) == blue .
+	ceq $gmfc(C ~ H, R, G, B, Y) = $gmfc(H, R, G, B, Y + 1) if getColor(C) == yellow .
+	ceq $gmfc(C ~ H, R, G, B, Y) = $gmfc(H, R, G, B, Y) if getColor(C) == all .
+	
 endfm
 
 mod GAME is
@@ -91,11 +107,11 @@ mod GAME is
 	
 	op exampleGame : -> Game .
 	eq exampleGame = game(
-			(card(1,red) ~ card(1,red) ~ card(1,red)) ~ empty,
-			(card(2,red) ~ card(2,red) ~ card(2,red)) ~ empty,
-			(card(3,red) ~ card(3,red) ~ card(plus4,all)) ~ empty,
-			(card(4,red) | card(4,blue) | card(4,yellow) | card(8,red) | card(8,blue) | card(8,yellow)) | card(9,red) | card(9,blue) | card(9,yellow),
-			(card(5,red) | card(5,blue) | card(5,yellow)),
+			(card(stop,red) ~ card(1,yellow) ~ card(1,yellow)) ~ empty,
+			(card(stop,blue) ~ card(2,red) ~ card(2,red)) ~ empty,
+			(card(stop,red) ~ card(3,red) ~ card(3,red)) ~ empty,
+			(card(4,red) | card(4,blue) | card(4,yellow) | card(8,red) | card(8,blue) | card(8,yellow) | card(9,red) | card(9,blue) | card(9,yellow)) | >,
+			(card(5,red)) | >,
 			false, false, 0, false
 		) .
 	
@@ -113,7 +129,7 @@ mod GAME is
 	
 	op possibleMove : Hand Card -> Bool .
 	ceq possibleMove(Ca ~ H, Ca') = true if getColor(Ca) == getColor(Ca') or getType(Ca) == getType(Ca') or getColor(Ca) == all .
-	eq possibleMove(Ca, Ca') = false .
+	ceq possibleMove(H, Ca') = false if H == empty .
 	eq possibleMove(Ca ~ H, Ca') = possibleMove(H, Ca') .
 	
 	crl [activate-plustwo-draw] :
@@ -133,8 +149,11 @@ mod GAME is
 	rl [throw-type] :
 		game(card(T, Col) ~ H, B, C, D, (card(T, Col') | G), false, P, 0, false) => game(H, B, C, D, (card(T, Col) | card(T, Col') | G), true, P, 0, false) .
 		
+	rl [throw-changecolor] :
+		game(card(change, all) ~ H, B, C, D, G, false, P, 0, false) => game(H, B, C, D, (card(change, getMostFrequentColor(H)) | G), true, P, 0, false) .
+		
 	rl [throw-plusfour] :
-		game(card(plus4, all) ~ H, B, C, D, G, false, P, 0, false) => game(B, C, H, D, card(plus4, red) | G, false, false, 4, true) .
+		game(card(plus4, all) ~ H, B, C, D, G, false, P, 0, false) => game(B, C, H, D, card(plus4, getMostFrequentColor(H)) | G, false, false, 4, true) .
 		
 	rl [turn-action-plustwo-on-general] :
 		game(A,B,C,D,(card(plus2, Col) | G), true, P, Cou, false) => game(B,C,A,D,(card(plus2, Col) | G), false, false,Cou + 2, false) .
@@ -147,13 +166,17 @@ mod GAME is
 		game(A,B,C,D,(Ca | G), true, P, 0, false) => game(C,B,A,D,(Ca | G),false, false, 0, false) 
 			if getType(Ca) == reverse .
 		
+	crl [turn-action-stop-cumulative] :
+		game(A,(Ca' ~ B),C,D,(Ca | G), true, P, 0,false) => game(B,C,A,D,(Ca' | Ca | G), true, false, 0,false) 
+			if getType(Ca) == stop and getType(Ca') == stop .
+		
 	crl [turn-action-stop] :
-		game(A,B,C,D,(Ca | G), true, P, 0,false) => game(C,A,B,D,(Ca | G),false, false, 0,false) 
-			if getType(Ca) == stop .
+		game(A,(Ca' ~ B),C,D,(Ca | G), true, P, 0,false) => game(C,A,B,D,(Ca | G),false, false, 0,false) 
+			if getType(Ca) == stop and not getType(Ca') == stop .
 		
 	crl [turn-number] :
 		game(A,B,C,D,(Ca | G), true, P, 0,false) => game(B,C,A,D,(Ca | G),false, false, 0,false) 
-			if isNumber(Ca) .
+			if isNumber(Ca) or getType(Ca) == change .
 		
 	crl [draw] :
 		game(A, B, C, (Ca | D), (Ca' | G), false, false, 0 ,false) => game(A ~ Ca, B, C, D, (Ca' | G), false, true, 0, false) 
