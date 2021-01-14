@@ -59,26 +59,26 @@ fmod DECK is
 endfm
 
 fmod HAND is 
-
 	pr DECK .
 	
 	sort Hand .
 	subsort Card < Hand .
 	
 	op empty : -> Hand [ctor] .
-	op _~_ : Hand Hand -> Hand [assoc comm] .
+	op _ ~ _ : Hand Hand -> Hand [assoc comm] .
 	
 	var H : Hand .
 	var C : Card .
 	var R G B Y : Nat .
+	var T : Type .
 	
 	op exampleHand : -> Hand .
 	eq exampleHand = card(plus2, green) ~ card(plus2, green) ~ card(1,red) ~ card(plus2, yellow) ~ card(2,blue) ~ empty .
 	
-	op containsPlusTwo : Hand -> Bool .
-	ceq containsPlusTwo(C ~ H) = true if getType(C) == plus2 .
-	eq containsPlusTwo(C ~ H) = containsPlusTwo(H) . 
-	eq containsPlusTwo(H) = getType(H) == plus2 .
+	op containsType : Hand Type -> Bool .
+	ceq containsType(C ~ H, T) = true if getType(C) == T .
+	ceq containsType(H, T) = false if H == empty .
+	eq containsType(C ~ H, T) = containsType(H, T) . 
 	
 	op getMostFrequentColor : Hand -> Color .
 	eq getMostFrequentColor(H) = $gmfc(H, 0, 0, 0, 0) .
@@ -96,25 +96,44 @@ fmod HAND is
 	
 endfm
 
+fmod PLAYER is
+
+	pr QID .
+	pr HAND .
+	
+	sort Player .
+	
+	op _ = _ : Qid Hand -> Player [ctor] .
+	
+	var H : Hand .
+	var Q : Qid .
+	
+	op getHand : Player -> Hand .
+	eq getHand(Q = H) = H .
+
+endfm
+
 mod GAME is
 
-	pr HAND .
+	pr PLAYER .
 	pr INT .
 
 	sort Game .
 	
-	op game : Hand Hand Hand Deck Deck Bool Bool Int Bool -> Game [ctor] . 
+	op game : Player Player Player Deck Deck Bool Bool Int Bool -> Game [ctor] . 
 	
 	op exampleGame : -> Game .
 	eq exampleGame = game(
-			(card(stop,red) ~ card(1,yellow) ~ card(1,yellow)) ~ empty,
-			(card(stop,blue) ~ card(2,red) ~ card(2,red)) ~ empty,
-			(card(stop,red) ~ card(3,red) ~ card(3,red)) ~ empty,
+			'A = (card(1,red) ~ card(1,yellow) ~ card(1,yellow)) ~ empty,
+			'B = (card(1,blue) ~ card(2,red) ~ card(2,red)) ~ empty,
+			'C = (card(1,red) ~ card(3,red) ~ card(3,red)) ~ empty,
 			(card(4,red) | card(4,blue) | card(4,yellow) | card(8,red) | card(8,blue) | card(8,yellow) | card(9,red) | card(9,blue) | card(9,yellow)) | >,
 			(card(5,red)) | >,
 			false, false, 0, false
 		) .
 	
+	vars Ap Bp Cp : Player .
+	vars A' B' C' : Qid .
 	vars A B C : Hand .
 	var Cou : Int .
 	vars D G : Deck .
@@ -124,62 +143,71 @@ mod GAME is
 	vars Col Col' : Color .
 	vars T T' : Type .
 	
-	op getCurrentPlayer : Game -> Hand .
-	eq getCurrentPlayer(game(A,B,C,D,G,P,P',Cou, P'')) = A .
-	
 	op possibleMove : Hand Card -> Bool .
 	ceq possibleMove(Ca ~ H, Ca') = true if getColor(Ca) == getColor(Ca') or getType(Ca) == getType(Ca') or getColor(Ca) == all .
 	ceq possibleMove(H, Ca') = false if H == empty .
 	eq possibleMove(Ca ~ H, Ca') = possibleMove(H, Ca') .
 	
+	op getPlayerA : Game -> Player .
+	ceq getPlayerA(game(A' = A, Bp, Cp, D, G, P, P', Cou, P'')) = (A' = A) if A' = 'A .
+	ceq getPlayerA(game(Ap, B' = B, Cp, D, G, P, P', Cou, P'')) = (B' = B) if B' = 'A .
+	ceq getPlayerA(game(Ap, Bp, C' = C, D, G, P, P', Cou, P'')) = (C' = C) if C' = 'A .
+	
+	op isFinished : Player Player Player -> Bool .
+	eq isFinished(Ap, Bp, Cp) = getHand(Ap) == empty or getHand(Bp) == empty or getHand(Cp) == empty .
+	
 	crl [activate-plustwo-draw] :
-		game(A,B,C,D,(card(plus2, Col) | G), false, false, Cou, false) => game(A,B,C,D,(card(plus2, Col) | G),false, false, Cou, true) 
-			if not containsPlusTwo(A) .
+		game(Ap,Bp,Cp,D,(card(plus2, Col) | G), false, false, Cou, false) => game(Ap,Bp,Cp,D,(card(plus2, Col) | G),false, false, Cou, true) 
+			if not containsType(getHand(Ap), plus2) and not isFinished(Ap, Bp, Cp) .
 				
 	crl [draw-two] :
-		game(A,B,C,(Ca | Ca' | D), G, false, false, Cou, true) => game(Ca ~ Ca' ~ A,B,C,D,G,false, false, Cou - 2, true) 
-			if Cou > 0 .
+		game(A' = A,Bp,Cp,(Ca | Ca' | D), G, false, false, Cou, true) => game(A' = Ca ~ Ca' ~ A,Bp,Cp,D,G,false, false, Cou - 2, true) 
+			if Cou > 0 and not isFinished(A' = A, Bp, Cp) .
 			
-	rl [deactivate-plustwo-draw] :
-		game(A,B,C,D,G, false, false, 0, true) => game(A,B,C,D,G,false, false, 0, false) .
+	crl [deactivate-plustwo-draw] :
+		game(Ap,Bp,Cp,D,G, false, false, 0, true) => game(Ap,Bp,Cp,D,G,false, false, 0, false) if not isFinished(Ap, Bp, Cp) .
 	
-	rl [throw-color] :
-		game(card(T, Col) ~ H, B, C, D, (card(T', Col) | G), false, P, 0, false) => game(H, B, C, D, (card(T, Col) | card(T', Col) | G), true, P, 0, false) .
+	crl [throw-color] :
+		game(A' = card(T, Col) ~ H, Bp, Cp, D, (card(T', Col) | G), false, P, 0, false) => game(A' = H, Bp, Cp, D, (card(T, Col) | card(T', Col) | G), true, P, 0, false) if not isFinished(A' = card(T, Col) ~ H, Bp, Cp).
 	
-	rl [throw-type] :
-		game(card(T, Col) ~ H, B, C, D, (card(T, Col') | G), false, P, 0, false) => game(H, B, C, D, (card(T, Col) | card(T, Col') | G), true, P, 0, false) .
+	crl [throw-type] :
+		game(A' = card(T, Col) ~ H, Bp, Cp, D, (card(T, Col') | G), false, P, 0, false) => game(A' = H, Bp, Cp, D, (card(T, Col) | card(T, Col') | G), true, P, 0, false) if not isFinished(A' = card(T, Col) ~ H, Bp, Cp) .
 		
-	rl [throw-changecolor] :
-		game(card(change, all) ~ H, B, C, D, G, false, P, 0, false) => game(H, B, C, D, (card(change, getMostFrequentColor(H)) | G), true, P, 0, false) .
+	crl [throw-changecolor] :
+		game(A' = card(change, all) ~ H, Bp, Cp, D, G, false, P, 0, false) => game(A' = H, Bp, Cp, D, (card(change, getMostFrequentColor(H)) | G), true, P, 0, false) if not isFinished(A' = card(change, all) ~ H, Bp, Cp) .
 		
-	rl [throw-plusfour] :
-		game(card(plus4, all) ~ H, B, C, D, G, false, P, 0, false) => game(B, C, H, D, card(plus4, getMostFrequentColor(H)) | G, false, false, 4, true) .
+	crl [throw-plusfour] :
+		game(A' = card(plus4, all) ~ H, Bp, Cp, D, G, false, P, 0, false) => game(Bp, Cp, A' = H, D, card(plus4, getMostFrequentColor(H)) | G, false, false, 4, true) if isFinished(A' = card(plus4, all) ~ H, Bp, Cp) .
 		
-	rl [turn-action-plustwo-on-general] :
-		game(A,B,C,D,(card(plus2, Col) | G), true, P, Cou, false) => game(B,C,A,D,(card(plus2, Col) | G), false, false,Cou + 2, false) .
+	crl [turn-action-plustwo-on-general] :
+		game(Ap,Bp,Cp,D,(card(plus2, Col) | G), true, P, Cou, false) => game(Bp,Cp,Ap,D,(card(plus2, Col) | G), false, false,Cou + 2, false) if not isFinished(Ap, Bp, Cp) .
 		
 	crl [turn-action-plustwo-on-plustwo] :
-		game(card(plus2, Col) ~ A,B,C,D,(Ca | G), P, false, Cou, false) => game(B,C,A,D,(card(plus2, Col) | Ca | G),false, false, Cou + 2, false) 
-			if getType(Ca) == plus2 .
+		game(A' = card(plus2, Col) ~ H,Bp,Cp,D,(Ca | G), P, false, Cou, false) => game(Bp,Cp,A' = H,D,(card(plus2, Col) | Ca | G),false, false, Cou + 2, false) 
+			if getType(Ca) == plus2 and not isFinished(A' = card(plus2, Col) ~ H, Bp, Cp).
 		
 	crl [turn-action-reverse] :
-		game(A,B,C,D,(Ca | G), true, P, 0, false) => game(C,B,A,D,(Ca | G),false, false, 0, false) 
-			if getType(Ca) == reverse .
+		game(Ap,Bp,Cp,D,(Ca | G), true, P, 0, false) => game(Cp,Bp,Ap,D,(Ca | G),false, false, 0, false) 
+			if getType(Ca) == reverse and not isFinished(Ap, Bp, Cp)  .
 		
 	crl [turn-action-stop-cumulative] :
-		game(A,(Ca' ~ B),C,D,(Ca | G), true, P, 0,false) => game(B,C,A,D,(Ca' | Ca | G), true, false, 0,false) 
-			if getType(Ca) == stop and getType(Ca') == stop .
+		game(Ap,B' = Ca' ~ H,Cp,D,(Ca | G), true, P, 0,false) => game(B' = H,Cp,Ap,D,(Ca' | Ca | G), true, false, 0,false) 
+			if getType(Ca) == stop and getType(Ca') == stop and not isFinished(Ap, B' = Ca' ~ H, Cp)  .
 		
 	crl [turn-action-stop] :
-		game(A,(Ca' ~ B),C,D,(Ca | G), true, P, 0,false) => game(C,A,B,D,(Ca | G),false, false, 0,false) 
-			if getType(Ca) == stop and not getType(Ca') == stop .
+		game(Ap,Bp,Cp,D,(Ca | G), true, P, 0,false) => game(Cp,Ap,Bp,D,(Ca | G),false, false, 0,false) 
+			if getType(Ca) == stop and not containsType(getHand(Bp), stop) and not isFinished(Ap, Bp, Cp) .
 		
 	crl [turn-number] :
-		game(A,B,C,D,(Ca | G), true, P, 0,false) => game(B,C,A,D,(Ca | G),false, false, 0,false) 
-			if isNumber(Ca) or getType(Ca) == change .
+		game(Ap,Bp,Cp,D,(Ca | G), true, P, 0,false) => game(Bp,Cp,Ap,D,(Ca | G),false, false, 0,false) 
+			if isNumber(Ca) or getType(Ca) == change and not isFinished(Ap, Bp, Cp) .
 		
 	crl [draw] :
-		game(A, B, C, (Ca | D), (Ca' | G), false, false, 0 ,false) => game(A ~ Ca, B, C, D, (Ca' | G), false, true, 0, false) 
-			if not possibleMove(A, Ca') .
+		game(A' = A, Bp, Cp, (Ca | D), (Ca' | G), false, false, 0 ,false) => game(A' = A ~ Ca, Bp, Cp, D, (Ca' | G), false, true, 0, false) 
+			if not possibleMove(A, Ca') and not isFinished(A' = A, Bp, Cp) .
+			
+	crl [turn-draw-nomove] :
+		game(A' = A, Bp, Cp, (Ca | D), (Ca' | G), false, true, 0 ,false) => game(Bp, Cp, A' = A ~ Ca,  D, (Ca' | G), false, false, 0, false) 
+			if not possibleMove(A, Ca') and not isFinished(A' = A, Bp, Cp) .
 
 endm
