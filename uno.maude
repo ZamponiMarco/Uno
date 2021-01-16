@@ -31,29 +31,32 @@ fmod DECK is
 	sort Deck .
 	subsort Card < Deck .
 	
-	var D : Deck .
-	var C : Card .
+	var D D' : Deck .
+	var C C' : Card .
 	
 	op > : -> Deck [ctor] .
 	op _|_ : Deck Deck -> Deck [assoc] .
 	
 	op example : -> Deck .
-	eq example = card(0, red) | card(1, red) | card(2, red) .
+	eq example = card(0, red) | card(1, red) | card(2, red) | > .
 	
-	op insertFirst : Deck Card -> Deck .
-	eq insertFirst(D, C) = C | D .
+	op removeFirstEmpty : Deck -> Deck .
+	ceq removeFirstEmpty(D | D') = D' if D == > .
+	eq removeFirstEmpty(D) = D .
 	
-	op seeFirst : Deck -> Card .
-	eq seeFirst((C | D)) = C .
+	op removeCard : Deck Card -> Deck .
+	eq removeCard(D, C') = removeFirstEmpty($rc(>, D, C')) .
 	
-	op removeFirst : Deck -> Deck .
-	eq removeFirst((C | D)) = D .
+	op $rc : Deck Deck Card -> Deck .
+	ceq $rc(D', C | D, C') = D' | D if C == C' .
+	ceq $rc(D', D, C') = D' | D if D == > .
+	eq $rc(D', C | D, C') = $rc(D' | C, D, C') .
 	
 	op |_| : Deck -> Nat .
 	eq | D | = $c(D) .
 	
 	op $c : Deck -> Nat .
-	eq $c((C | D)) = 1 + $c(D) .
+	eq $c(C | D) = 1 + $c(D) .
 	eq $c(C) = 1 .
 
 endfm
@@ -68,6 +71,7 @@ fmod HAND is
 	op _ ~ _ : Hand Hand -> Hand [assoc comm] .
 	
 	var H : Hand .
+	var D : Deck .
 	var C : Card .
 	var R G B Y : Nat .
 	var T : Type .
@@ -93,6 +97,10 @@ fmod HAND is
 	ceq $gmfc(C ~ H, R, G, B, Y) = $gmfc(H, R, G, B + 1, Y) if getColor(C) == blue .
 	ceq $gmfc(C ~ H, R, G, B, Y) = $gmfc(H, R, G, B, Y + 1) if getColor(C) == yellow .
 	ceq $gmfc(C ~ H, R, G, B, Y) = $gmfc(H, R, G, B, Y) if getColor(C) == all .
+	
+	op removeHand : Deck Hand -> Deck .
+	ceq removeHand(D, H) = D if H == empty .
+	eq removeHand(D, C ~ H) = removeHand(removeCard(D, C), H).
 	
 endfm
 
@@ -122,16 +130,6 @@ mod GAME is
 	
 	op game : Player Player Player Deck Deck Bool Bool Int Bool -> Game [ctor] . 
 	
-	op exampleGame : -> Game .
-	eq exampleGame = game(
-			'A = (card(1,red) ~ card(1,yellow) ~ card(1,yellow)) ~ empty,
-			'B = (card(1,blue) ~ card(2,red) ~ card(2,red)) ~ empty,
-			'C = (card(1,red) ~ card(3,red) ~ card(3,red)) ~ empty,
-			(card(4,red) | card(4,blue) | card(4,yellow) | card(8,red) | card(8,blue) | card(8,yellow) | card(9,red) | card(9,blue) | card(9,yellow)) | >,
-			(card(5,red)) | >,
-			false, false, 0, false
-		) .
-	
 	vars Ap Bp Cp : Player .
 	vars A' B' C' : Qid .
 	vars A B C : Hand .
@@ -159,10 +157,6 @@ mod GAME is
 	crl [activate-plustwo-draw] :
 		game(Ap,Bp,Cp,D,(card(plus2, Col) | G), false, false, Cou, false) => game(Ap,Bp,Cp,D,(card(plus2, Col) | G),false, false, Cou, true) 
 			if not containsType(getHand(Ap), plus2) and not isFinished(Ap, Bp, Cp) .
-				
-	crl [draw-two] :
-		game(A' = A,Bp,Cp,(Ca | Ca' | D), G, false, false, Cou, true) => game(A' = Ca ~ Ca' ~ A,Bp,Cp,D,G,false, false, Cou - 2, true) 
-			if Cou > 0 and not isFinished(A' = A, Bp, Cp) .
 			
 	crl [deactivate-plustwo-draw] :
 		game(Ap,Bp,Cp,D,G, false, false, 0, true) => game(Ap,Bp,Cp,D,G,false, false, 0, false) if not isFinished(Ap, Bp, Cp) .
@@ -201,13 +195,46 @@ mod GAME is
 	crl [turn-number] :
 		game(Ap,Bp,Cp,D,(Ca | G), true, P, 0,false) => game(Bp,Cp,Ap,D,(Ca | G),false, false, 0,false) 
 			if isNumber(Ca) or getType(Ca) == change and not isFinished(Ap, Bp, Cp) .
+			
+	crl [turn-nomove] :
+		game(A' = A, Bp, Cp, (Ca | D), (Ca' | G), false, true, 0 ,false) => game(Bp, Cp, A' = A ~ Ca,  D, (Ca' | G), false, false, 0, false) 
+			if not possibleMove(A, Ca') and not isFinished(A' = A, Bp, Cp) .
+			
+	crl [draw-forced] :
+		game(A' = A,Bp,Cp,(Ca | D), G, false, false, Cou, true) => game(A' = Ca ~ A,Bp,Cp,D,G,false, false, Cou - 1, true) 
+			if Cou > 0 and not isFinished(A' = A, Bp, Cp) .
 		
 	crl [draw] :
 		game(A' = A, Bp, Cp, (Ca | D), (Ca' | G), false, false, 0 ,false) => game(A' = A ~ Ca, Bp, Cp, D, (Ca' | G), false, true, 0, false) 
 			if not possibleMove(A, Ca') and not isFinished(A' = A, Bp, Cp) .
 			
-	crl [turn-draw-nomove] :
-		game(A' = A, Bp, Cp, (Ca | D), (Ca' | G), false, true, 0 ,false) => game(Bp, Cp, A' = A ~ Ca,  D, (Ca' | G), false, false, 0, false) 
-			if not possibleMove(A, Ca') and not isFinished(A' = A, Bp, Cp) .
+	crl [shuffle] :
+		game(Ap, Bp, Cp, D, (Ca | G), P, P', Cou, P'') => game(Ap, Bp, Cp, removeCard(removeHand(removeHand(removeHand(shuffleDeck, getHand(Cp)), getHand(Bp)), getHand(Ap)), Ca), Ca | >, P, P', Cou, P'')
+			if D == > and not isFinished(Ap, Bp, Cp) .
+		
+	*** ------------
+	*** EXAMPLE GAME
+	*** ------------
+			
+	op handA : -> Hand .
+	eq handA = card(7, yellow) ~ card(5, blue) ~ card(6, green) ~ card(stop, red) ~ card(5, green) ~ card(1, red) ~ card(1, green) ~ empty .
+	
+	op handB : -> Hand .
+	eq handB = card(5, green) ~ card(change, all) ~ card(2, blue) ~ card(2, green) ~ card(8, green) ~ card(9, yellow) ~ card(8, blue) ~ empty .
+	
+	op handC : -> Hand .
+	eq handC = card(plus2, red) ~ card(1, yellow) ~ card(stop, green) ~ card(7, green) ~ card(plus2, red) ~ card(1, green) ~ card(7, blue) ~ empty .
+	
+	op garbageDeck : -> Deck .
+	eq garbageDeck = card(1, blue) | > .
+		
+	op drawDeck : -> Deck .
+	eq drawDeck =  card(3, yellow) | card(4, yellow) | card(3, green) | card(stop, yellow) | card(8, yellow) | card(8, yellow) | card(3, yellow) | card(4, red) | card(stop, red) | card(2, blue) | card(reverse, blue) | card(plus4, all) | card(7, green) | card(stop, green) | card(plus2, blue) | card(plus2, yellow) | card(6, blue) | card(2, yellow) | card(8, red) | card(change, all) | card(4, blue) | card(4, blue) | card(reverse, blue) | card(1, blue) | card(5, red) | card(1, red) | card(0, green) | card(9, red) | card(reverse, green) | card(plus4, all) | card(0, red) | card(4, yellow) | card(1, yellow) | card(5, yellow) | card(5, yellow) | card(plus4, all) | card(stop, yellow) | card(6, yellow) | card(6, green) | card(reverse, green) | card(2, yellow) | card(6, yellow) | card(plus2, blue) | card(2, red) | card(8, red) | card(9, blue) | card(9, green) | card(stop, blue) | card(8, green) | card(reverse, yellow) | card(7, red) | card(3, green) | card(5, red) | card(4, red) | card(6, blue) | card(3, blue) | card(3, red) | card(5, blue) | card(0, yellow) | card(plus2, green) | card(9, green) | card(change, all) | card(9, red) | card(reverse, red) | card(6, red) | card(9, yellow) | card(3, blue) | card(6, red) | card(9, blue) | card(reverse, red) | card(3, red) | card(plus4, all) | card(stop, blue) | card(8, blue) | card(reverse, yellow) | card(7, blue) | card(plus2, green) | card(2, green) | card(4, green) | card(4, green) | card(change, all) | card(7, yellow) | card(0, blue) | card(plus2, yellow) | card(2, red) | card(7, red) | > .
+				
+	op shuffleDeck : -> Deck .
+	eq shuffleDeck = card(plus2, yellow) | card(6, green) | card(9, blue) | card(5, blue) | card(9, yellow) | card(3, yellow) | card(6, blue) | card(0, blue) | card(plus4, all) | card(reverse, red) | card(stop, green) | card(stop, red) | card(8, blue) | card(4, red) | card(6, green) | card(2, red) | card(9, yellow) | card(plus4, all) | card(stop, yellow) | card(plus2, green) | card(6, yellow) | card(stop, red) | card(6, blue) | card(7, blue) | card(8, blue) | card(change, all) | card(4, green) | card(9, blue) | card(plus2, red) | card(0, red) | card(1, yellow) | card(2, yellow) | card(1, green) | card(2, blue) | card(2, red) | card(7, red) | card(reverse, yellow) | card(7, yellow) | card(stop, blue) | card(3, green) | card(reverse, green) | card(plus4, all) | card(3, red) | card(1, blue) | card(6, yellow) | card(change, all) | card(4, green) | card(7, blue) | card(0, yellow) | card(plus4, all) | card(reverse, blue) | card(5, red) | card(change, all) | card(1, blue) | card(1, yellow) | card(2, yellow) | card(8, yellow) | card(5, blue) | card(6, red) | card(1, green) | card(plus2, yellow) | card(2, green) | card(plus2, blue) | card(stop, blue) | card(5, green) | card(7, red) | card(4, yellow) | card(8, yellow) | card(7, green) | card(8, green) | card(5, yellow) | card(3, red) | card(7, yellow) | card(1, red) | card(stop, yellow) | card(9, green) | card(2, green) | card(4, blue) | card(5, red) | card(plus2, blue) | card(9, red) | card(4, yellow) | card(1, red) | card(3, blue) | card(2, blue) | card(stop, green) | card(5, yellow) | card(9, red) | card(9, green) | card(5, green) | card(change, all) | card(reverse, green) | card(4, red) | card(4, blue) | card(reverse, blue) | card(plus2, red) | card(0, green) | card(reverse, red) | card(8, red) | card(3, green) | card(reverse, yellow) | card(3, yellow) | card(8, red) | card(8, green) | card(7, green) | card(plus2, green) | card(6, red) | card(3, blue) | > .
+	
+	op exampleGame : -> Game .
+	eq exampleGame = game('A = handA, 'B = handB, 'C = handC, drawDeck, garbageDeck, false, false, 0, false) .
 
 endm
