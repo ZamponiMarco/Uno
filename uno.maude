@@ -124,6 +124,9 @@ fmod PLAYER is
 	
 	op getHand : Player -> Hand .
 	eq getHand(Q = H) = H .
+	
+	op getLabel : Player -> Qid .
+	eq getLabel(Q = H) = Q .
 
 endfm
 
@@ -154,6 +157,11 @@ mod GAME is
 
 	op isFinished : Player Player Player -> Bool .
 	eq isFinished(Ap, Bp, Cp) = getHand(Ap) == empty or getHand(Bp) == empty or getHand(Cp) == empty .
+	
+	op hasWon : Game Qid -> Bool  .
+	ceq hasWon(game(Ap, Bp, Cp, D, G, P, P', Cou, P''), A') = getHand(Ap) == empty and not getHand(Bp) == empty and not getHand(Cp) == empty 
+		if getLabel(Ap) = A' .
+	eq hasWon(game(Ap, Bp, Cp, D, G, P, P', Cou, P''), A') = false [owise] .
 
 	*** THROW RULES 
 	
@@ -170,7 +178,7 @@ mod GAME is
 	--- (ok)
 	crl [throw-changecolor] :
 		game(A' = Ca' ~ H, Bp, Cp, D, G, false, P, 0, false) => game(A' = H, Bp, Cp, D, (card(change, getMostFrequentColor(H)) | G), true, P, 0, false) 
-			if getType(Ca) == change and not isFinished(A' = Ca' ~ H, Bp, Cp) .
+			if getType(Ca') == change and not isFinished(A' = Ca' ~ H, Bp, Cp) .
 		
 	--- (ok)
 	crl [throw-plusfour] :
@@ -243,15 +251,6 @@ mod GAME is
 	
 	op handC : -> Hand .
 	eq handC = card(plus2, red) ~ card(1, yellow) ~ card(stop, green) ~ card(7, green) ~ card(plus2, red) ~ card(1, green) ~ card(7, blue) ~ empty .
-	
-	op testA : -> Hand .
-	eq testA = card(2, yellow) ~ card(plus2, blue) ~ empty .
-	
-	op testB : -> Hand .
-	eq testB = card(5, green) ~ card(plus2, red) ~ empty .
-	
-	op testC : -> Hand .
-	eq testC = card(plus2, yellow) ~ card(1, yellow) ~ empty .
 	
 	op garbageDeck : -> Deck .
 	eq garbageDeck = card(1, blue) | > .
