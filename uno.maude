@@ -182,7 +182,7 @@ mod GAME is
 		
 	--- (ok)
 	crl [throw-plusfour] :
-		game(A' = Ca' ~ H, Bp, Cp, D, Ca | G, false, P, 0, false) => game(Bp, Cp, A' = H, D, card(plus4, getMostFrequentColor(H)) | Ca | G, true, P, 0, false) 
+		game(A' = Ca' ~ H, Bp, Cp, D, Ca | G, false, P, 0, false) => game(A' = H, Bp, Cp, D, card(plus4, getMostFrequentColor(H)) | Ca | G, true, P, 0, false) 
 			if getType(Ca') == plus4 and not containsColor(H, getColor(Ca)) and not isFinished(A' = Ca' ~ H, Bp, Cp) .
 		
 	*** TURN CHANGE RULES
