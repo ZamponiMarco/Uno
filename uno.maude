@@ -36,10 +36,7 @@ fmod DECK is
 	
 	op > : -> Deck [ctor] .
 	op _|_ : Deck Deck -> Deck [assoc] .
-	
-	op example : -> Deck .
-	eq example = card(0, red) | card(1, red) | card(2, red) | > .
-	
+
 	op removeFirstEmpty : Deck -> Deck .
 	ceq removeFirstEmpty(D | D') = D' if D == > .
 	eq removeFirstEmpty(D) = D .
@@ -51,13 +48,6 @@ fmod DECK is
 	ceq $rc(D', C | D, C') = D' | D if C == C' .
 	ceq $rc(D', D, C') = D' | D if D == > .
 	eq $rc(D', C | D, C') = $rc(D' | C, D, C') .
-	
-	op |_| : Deck -> Nat .
-	eq | D | = $c(D) .
-	
-	op $c : Deck -> Nat .
-	eq $c(C | D) = 1 + $c(D) .
-	eq $c(C) = 1 .
 
 endfm
 
@@ -76,9 +66,6 @@ fmod HAND is
 	var Col : Color .
 	var R G B Y : Nat .
 	var T : Type .
-	
-	op exampleHand : -> Hand .
-	eq exampleHand = card(plus2, green) ~ card(plus2, green) ~ card(1,red) ~ card(plus2, yellow) ~ card(2,blue) ~ empty .
 	
 	op containsColor : Hand Color -> Bool .
 	ceq containsColor(C ~ H, Col) = true if getColor(C) == Col .
