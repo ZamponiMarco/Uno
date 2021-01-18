@@ -140,9 +140,7 @@ mod GAME is
 	vars T T' : Type .
 	
 	op possibleMove : Hand Card -> Bool .
-	ceq possibleMove(Ca ~ H, Ca') = true if getColor(Ca) == getColor(Ca') or getType(Ca) == getType(Ca') or getColor(Ca) == all .
-	ceq possibleMove(H, Ca') = false if H == empty .
-	eq possibleMove(Ca ~ H, Ca') = possibleMove(H, Ca') .
+	eq possibleMove(H, Ca) = containsColor(H, getColor(Ca)) or containsType(H, getType(Ca)) or containsColor(H, all) .
 
 	op isFinished : Player Player Player -> Bool .
 	eq isFinished(Ap, Bp, Cp) = getHand(Ap) == empty or getHand(Bp) == empty or getHand(Cp) == empty .
