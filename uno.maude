@@ -152,76 +152,83 @@ mod GAME is
 
 	*** THROW RULES 
 	
-	--- (ok)
+	--- Throws a card of the same color of the first card in the discard pile
 	crl [throw-color] :
 		game(A' = Ca' ~ H, Bp, Cp, D, Ca | G, false, P, 0) => game(A' = H, Bp, Cp, D, Ca' | Ca | G, true, P, 0) 
 			if getColor(Ca') == getColor(Ca) and not isFinished(A' = Ca' ~ H, Bp, Cp) .
 	
-	--- (ok)
+	--- Throws a card of the same type of the first card in the discard pile (plus4 and change are excluded by the rule)
 	crl [throw-type] :
 		game(A' = Ca' ~ H, Bp, Cp, D, Ca | G, false, P, 0) => game(A' = H, Bp, Cp, D, Ca' | Ca | G, true, P, 0) 
-			if getType(Ca) == getType(Ca') and not isFinished(A' = Ca' ~ H, Bp, Cp) .
+			if getType(Ca) == getType(Ca') and not getColor(Ca) == all and not isFinished(A' = Ca' ~ H, Bp, Cp) .
 
-	--- (ok)
+	--- Throws a change color card, the selected color for comodity is set to the most frequent color in the hand of the player,
+	--- otherwise all four possible colors could be achieved by creating a rewriting rule for each color
 	crl [throw-changecolor] :
 		game(A' = Ca' ~ H, Bp, Cp, D, G, false, P, 0) => game(A' = H, Bp, Cp, D, (card(change, getMostFrequentColor(H)) | G), true, P, 0) 
 			if getType(Ca') == change and not isFinished(A' = Ca' ~ H, Bp, Cp) .
 		
-	--- (ok)
+	--- Throws a plus four card, the selected color for comodity is set to the most frequent color in the hand of the player,
+	--- otherwise all four possible colors could be achieved by creating a rewriting rule for each color
+	--- Note that the card can be thrown only if the player hand doesn't contain a card with the same color as the one in the top
+	--- of the discard pile.
 	crl [throw-plusfour] :
 		game(A' = Ca' ~ H, Bp, Cp, D, Ca | G, false, P, 0) => game(A' = H, Bp, Cp, D, card(plus4, getMostFrequentColor(H)) | Ca | G, true, P, 0) 
 			if getType(Ca') == plus4 and not containsColor(H, getColor(Ca)) and not isFinished(A' = Ca' ~ H, Bp, Cp) .
 		
 	*** TURN CHANGE RULES
 	
-	--- (ok)
+	--- Applies the reverse card rule, the order of playing of the players is inverted.
 	crl [turn-action-reverse] :
 		game(Ap, Bp, Cp, D, Ca | G, true, P, 0) => game(Cp, Bp, Ap, D, Ca | G, false, false, 0) 
 			if getType(Ca) == reverse and not isFinished(Ap, Bp, Cp) .
 		
-	--- (ok)
+	--- Applied the plus two card rule, the next player is forced to draw two cards.
 	crl [turn-action-plustwo] :
 		game(Ap, Bp, Cp, D, Ca | G, true, P, 0) => game(Bp, Cp, Ap, D, Ca | G, false, false, 2)
 			if getType(Ca) == plus2 and not isFinished(Ap, Bp, Cp) .
 			
-	--- (ok)
+	--- Applied the plus four card rule, the next player is forced to draw four cards.
 	crl [turn-action-plusfour] :
 		game(Ap, Bp, Cp, D, Ca | G, true, P, 0) => game(Bp, Cp, Ap, D, Ca | G, false, false, 4)
 			if getType(Ca) == plus4 and not isFinished(Ap, Bp, Cp) .
 
-	--- (ok)
+	--- Applies the stop card rule, the next player turn is skipped and the turn passes directly to the following player.
 	crl [turn-action-stop] :
 		game(Ap, Bp, Cp, D, Ca | G, true, P, 0) => game(Cp, Ap, Bp, D, Ca | G, false, false, 0) 
 			if getType(Ca) == stop and not isFinished(Ap, Bp, Cp) .
 		
-	--- (ok)
+	--- Applies no card rule, only switches the turn.
 	crl [turn-number] :
 		game(Ap, Bp, Cp, D, Ca | G, true, P, 0) => game(Bp, Cp, Ap, D, Ca | G, false, false, 0) 
 			if (isNumber(Ca) or getType(Ca) == change) and not isFinished(Ap, Bp, Cp) .
 		
-	--- (ok)
+	--- Called when the player has drawn a card but still has not possible moves, only switches the turn.
 	crl [turn-nomove] :
 		game(Ap, Bp, Cp, D, Ca' | G, false, true, 0) => game(Bp, Cp, Ap, D, (Ca' | G), false, false, 0) 
 			if not possibleMove(getHand(Ap), Ca') and not isFinished(Ap, Bp, Cp) .
 		
 	*** DRAWING RULES
 			
-	--- (ok)
+	--- When a player has to draw only another card coming from a plus two or a plus four card, draw a card and
+	--- switches the turn without playing.
 	crl [stop-draw-forced] :
 		game(A' = A, Bp, Cp, Ca | D, G, false, false, Cou) => game(Bp, Cp, A' = Ca ~ A, D, G, false, false, 0) 
 			if Cou == 1 and not isFinished(A' = A, Bp, Cp) .
 			
-	--- (ok)
+	--- When a player has to draw more than one card coming from a plus two or a plus four card, draw a card and
+	--- decrement the counter by one.
 	crl [draw-forced] :
 		game(A' = A, Bp, Cp, Ca | D, G, false, false, Cou) => game(A' = Ca ~ A, Bp, Cp, D, G, false, false, Cou - 1) 
 			if Cou > 1 and not isFinished(A' = A, Bp, Cp) .
 		
-	--- (ok)
+	--- If the player can't play a card, draw a card from the draw deck and set the variable drawn to true
 	crl [draw] :
 		game(A' = A, Bp, Cp, Ca | D, Ca' | G, false, false, 0) => game(A' = A ~ Ca, Bp, Cp, D, Ca' | G, false, true, 0) 
 			if not possibleMove(A, Ca') and not isFinished(A' = A, Bp, Cp) .
 			
-	--- (ok)
+	--- If the draw deck is empty shuffle it with the deck from the shuffleDeck operation, removing the cards from the player hands
+	--- and the card left in the discard pile.
 	crl [shuffle] :
 		game(Ap, Bp, Cp, D, Ca | G, P, P', Cou) => game(Ap, Bp, Cp, removeCard(removeHand(removeHand(removeHand(shuffleDeck, getHand(Cp)), getHand(Bp)), getHand(Ap)), Ca), Ca | >, P, P', Cou)
 			if D == > and not isFinished(Ap, Bp, Cp) .
