@@ -137,7 +137,7 @@ mod GAME is
 
 	sort Game .
 	
-	op game : Player Player Player Deck Deck Bool Bool Int Bool -> Game [ctor] . 
+	op game : Player Player Player Deck Deck Bool Bool Int -> Game [ctor] . 
 	
 	vars Ap Bp Cp : Player .
 	vars A' B' C' : Qid .
@@ -159,84 +159,84 @@ mod GAME is
 	eq isFinished(Ap, Bp, Cp) = getHand(Ap) == empty or getHand(Bp) == empty or getHand(Cp) == empty .
 	
 	op hasWon : Game Qid -> Bool  .
-	ceq hasWon(game(Ap, Bp, Cp, D, G, P, P', Cou, P''), A') = getHand(Ap) == empty and not getHand(Bp) == empty and not getHand(Cp) == empty 
+	ceq hasWon(game(Ap, Bp, Cp, D, G, P, P', Cou), A') = getHand(Ap) == empty and not getHand(Bp) == empty and not getHand(Cp) == empty 
 		if getLabel(Ap) = A' .
-	eq hasWon(game(Ap, Bp, Cp, D, G, P, P', Cou, P''), A') = false [owise] .
+	eq hasWon(game(Ap, Bp, Cp, D, G, P, P', Cou), A') = false [owise] .
 
 	*** THROW RULES 
 	
 	--- (ok)
 	crl [throw-color] :
-		game(A' = Ca' ~ H, Bp, Cp, D, Ca | G, false, P, 0, false) => game(A' = H, Bp, Cp, D, Ca' | Ca | G, true, P, 0, false) 
+		game(A' = Ca' ~ H, Bp, Cp, D, Ca | G, false, P, 0) => game(A' = H, Bp, Cp, D, Ca' | Ca | G, true, P, 0) 
 			if getColor(Ca') == getColor(Ca) and not isFinished(A' = Ca' ~ H, Bp, Cp) .
 	
 	--- (ok)
 	crl [throw-type] :
-		game(A' = Ca' ~ H, Bp, Cp, D, Ca | G, false, P, 0, false) => game(A' = H, Bp, Cp, D, Ca' | Ca | G, true, P, 0, false) 
+		game(A' = Ca' ~ H, Bp, Cp, D, Ca | G, false, P, 0) => game(A' = H, Bp, Cp, D, Ca' | Ca | G, true, P, 0) 
 			if getType(Ca) == getType(Ca') and not isFinished(A' = Ca' ~ H, Bp, Cp) .
 
 	--- (ok)
 	crl [throw-changecolor] :
-		game(A' = Ca' ~ H, Bp, Cp, D, G, false, P, 0, false) => game(A' = H, Bp, Cp, D, (card(change, getMostFrequentColor(H)) | G), true, P, 0, false) 
+		game(A' = Ca' ~ H, Bp, Cp, D, G, false, P, 0) => game(A' = H, Bp, Cp, D, (card(change, getMostFrequentColor(H)) | G), true, P, 0) 
 			if getType(Ca') == change and not isFinished(A' = Ca' ~ H, Bp, Cp) .
 		
 	--- (ok)
 	crl [throw-plusfour] :
-		game(A' = Ca' ~ H, Bp, Cp, D, Ca | G, false, P, 0, false) => game(A' = H, Bp, Cp, D, card(plus4, getMostFrequentColor(H)) | Ca | G, true, P, 0, false) 
+		game(A' = Ca' ~ H, Bp, Cp, D, Ca | G, false, P, 0) => game(A' = H, Bp, Cp, D, card(plus4, getMostFrequentColor(H)) | Ca | G, true, P, 0) 
 			if getType(Ca') == plus4 and not containsColor(H, getColor(Ca)) and not isFinished(A' = Ca' ~ H, Bp, Cp) .
 		
 	*** TURN CHANGE RULES
 	
 	--- (ok)
 	crl [turn-action-reverse] :
-		game(Ap,Bp,Cp,D,Ca | G, true, P, 0, false) => game(Cp,Bp,Ap,D,Ca | G, false, false, 0, false) 
+		game(Ap,Bp,Cp,D,Ca | G, true, P, 0) => game(Cp,Bp,Ap,D,Ca | G, false, false, 0) 
 			if getType(Ca) == reverse and not isFinished(Ap, Bp, Cp) .
 		
 	--- (ok)
 	crl [turn-action-plustwo] :
-		game(Ap,Bp,Cp,D,Ca | G, true, P, 0, false) => game(Bp,Cp,Ap,D,Ca | G, false, false, 2, true)
+		game(Ap,Bp,Cp,D,Ca | G, true, P, 0) => game(Bp,Cp,Ap,D,Ca | G, false, false, 2)
 			if getType(Ca) == plus2 and not isFinished(Ap, Bp, Cp) .
 			
 	--- (ok)
 	crl [turn-action-plusfour] :
-		game(Ap,Bp,Cp,D,Ca | G, true, P, 0, false) => game(Bp,Cp,Ap,D,Ca | G, false, false, 4, true)
+		game(Ap,Bp,Cp,D,Ca | G, true, P, 0) => game(Bp,Cp,Ap,D,Ca | G, false, false, 4)
 			if getType(Ca) == plus4 and not isFinished(Ap, Bp, Cp) .
 
 	--- (ok)
 	crl [turn-action-stop] :
-		game(Ap,Bp,Cp,D,Ca | G, true, P, 0,false) => game(Cp,Ap,Bp,D,Ca | G,false, false, 0,false) 
+		game(Ap,Bp,Cp,D,Ca | G, true, P, 0) => game(Cp,Ap,Bp,D,Ca | G,false, false, 0) 
 			if getType(Ca) == stop and not isFinished(Ap, Bp, Cp) .
 		
 	--- (ok)
 	crl [turn-number] :
-		game(Ap,Bp,Cp,D,Ca | G, true, P, 0,false) => game(Bp,Cp,Ap,D,Ca | G,false, false, 0,false) 
+		game(Ap,Bp,Cp,D,Ca | G, true, P, 0) => game(Bp,Cp,Ap,D,Ca | G,false, false, 0) 
 			if (isNumber(Ca) or getType(Ca) == change) and not isFinished(Ap, Bp, Cp) .
 		
 	--- (ok)
 	crl [turn-nomove] :
-		game(Ap, Bp, Cp, D, Ca' | G, false, true, 0 , false) => game(Bp, Cp, Ap, D, (Ca' | G), false, false, 0, false) 
+		game(Ap, Bp, Cp, D, Ca' | G, false, true, 0) => game(Bp, Cp, Ap, D, (Ca' | G), false, false, 0) 
 			if not possibleMove(getHand(Ap), Ca') and not isFinished(Ap, Bp, Cp) .
 		
 	*** DRAWING RULES
 			
 	--- (ok)
 	crl [stop-draw-forced] :
-		game(Ap,Bp,Cp,D,G, false, false, 0, true) => game(Bp,Cp,Ap,D,G,false, false, 0, false) 
-			if not isFinished(Ap, Bp, Cp) .
+		game(A' = A,Bp,Cp,Ca | D, G, false, false, Cou) => game(Bp,Cp,A' = Ca ~ A,D,G,false, false, Cou - 1) 
+			if Cou == 1 and not isFinished(A' = A, Bp, Cp) .
 			
 	--- (ok)
 	crl [draw-forced] :
-		game(A' = A,Bp,Cp,(Ca | D), G, false, false, Cou, true) => game(A' = Ca ~ A,Bp,Cp,D,G,false, false, Cou - 1, true) 
-			if Cou > 0 and not isFinished(A' = A, Bp, Cp) .
+		game(A' = A,Bp,Cp,Ca | D, G, false, false, Cou) => game(A' = Ca ~ A,Bp,Cp,D,G,false, false, Cou - 1) 
+			if Cou > 1 and not isFinished(A' = A, Bp, Cp) .
 		
 	--- (ok)
 	crl [draw] :
-		game(A' = A, Bp, Cp, (Ca | D), (Ca' | G), false, false, 0 ,false) => game(A' = A ~ Ca, Bp, Cp, D, (Ca' | G), false, true, 0, false) 
+		game(A' = A, Bp, Cp, Ca | D, Ca' | G, false, false, 0) => game(A' = A ~ Ca, Bp, Cp, D, Ca' | G, false, true, 0) 
 			if not possibleMove(A, Ca') and not isFinished(A' = A, Bp, Cp) .
 			
 	--- (ok)
 	crl [shuffle] :
-		game(Ap, Bp, Cp, D, (Ca | G), P, P', Cou, P'') => game(Ap, Bp, Cp, removeCard(removeHand(removeHand(removeHand(shuffleDeck, getHand(Cp)), getHand(Bp)), getHand(Ap)), Ca), Ca | >, P, P', Cou, P'')
+		game(Ap, Bp, Cp, D, Ca | G, P, P', Cou) => game(Ap, Bp, Cp, removeCard(removeHand(removeHand(removeHand(shuffleDeck, getHand(Cp)), getHand(Bp)), getHand(Ap)), Ca), Ca | >, P, P', Cou)
 			if D == > and not isFinished(Ap, Bp, Cp) .
 		
 	*** ------------
@@ -262,6 +262,6 @@ mod GAME is
 	eq shuffleDeck = card(plus2, yellow) | card(6, green) | card(9, blue) | card(5, blue) | card(9, yellow) | card(3, yellow) | card(6, blue) | card(0, blue) | card(plus4, all) | card(reverse, red) | card(stop, green) | card(stop, red) | card(8, blue) | card(4, red) | card(6, green) | card(2, red) | card(9, yellow) | card(plus4, all) | card(stop, yellow) | card(plus2, green) | card(6, yellow) | card(stop, red) | card(6, blue) | card(7, blue) | card(8, blue) | card(change, all) | card(4, green) | card(9, blue) | card(plus2, red) | card(0, red) | card(1, yellow) | card(2, yellow) | card(1, green) | card(2, blue) | card(2, red) | card(7, red) | card(reverse, yellow) | card(7, yellow) | card(stop, blue) | card(3, green) | card(reverse, green) | card(plus4, all) | card(3, red) | card(1, blue) | card(6, yellow) | card(change, all) | card(4, green) | card(7, blue) | card(0, yellow) | card(plus4, all) | card(reverse, blue) | card(5, red) | card(change, all) | card(1, blue) | card(1, yellow) | card(2, yellow) | card(8, yellow) | card(5, blue) | card(6, red) | card(1, green) | card(plus2, yellow) | card(2, green) | card(plus2, blue) | card(stop, blue) | card(5, green) | card(7, red) | card(4, yellow) | card(8, yellow) | card(7, green) | card(8, green) | card(5, yellow) | card(3, red) | card(7, yellow) | card(1, red) | card(stop, yellow) | card(9, green) | card(2, green) | card(4, blue) | card(5, red) | card(plus2, blue) | card(9, red) | card(4, yellow) | card(1, red) | card(3, blue) | card(2, blue) | card(stop, green) | card(5, yellow) | card(9, red) | card(9, green) | card(5, green) | card(change, all) | card(reverse, green) | card(4, red) | card(4, blue) | card(reverse, blue) | card(plus2, red) | card(0, green) | card(reverse, red) | card(8, red) | card(3, green) | card(reverse, yellow) | card(3, yellow) | card(8, red) | card(8, green) | card(7, green) | card(plus2, green) | card(6, red) | card(3, blue) | > .
 	
 	op exampleGame : -> Game .
-	eq exampleGame = game('A = handA, 'B = handB, 'C = handC, drawDeck, garbageDeck, false, false, 0, false) .
+	eq exampleGame = game('A = handA, 'B = handB, 'C = handC, drawDeck, garbageDeck, false, false, 0) .
 
 endm
