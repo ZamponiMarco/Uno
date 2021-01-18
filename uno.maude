@@ -191,12 +191,12 @@ mod GAME is
 
 	--- (ok)
 	crl [turn-action-stop] :
-		game(Ap, Bp, Cp, D, Ca | G, true, P, 0) => game(Cp, Ap, Bp, D, Ca | G,false, false, 0) 
+		game(Ap, Bp, Cp, D, Ca | G, true, P, 0) => game(Cp, Ap, Bp, D, Ca | G, false, false, 0) 
 			if getType(Ca) == stop and not isFinished(Ap, Bp, Cp) .
 		
 	--- (ok)
 	crl [turn-number] :
-		game(Ap, Bp, Cp, D, Ca | G, true, P, 0) => game(Bp, Cp, Ap, D, Ca | G,false, false, 0) 
+		game(Ap, Bp, Cp, D, Ca | G, true, P, 0) => game(Bp, Cp, Ap, D, Ca | G, false, false, 0) 
 			if (isNumber(Ca) or getType(Ca) == change) and not isFinished(Ap, Bp, Cp) .
 		
 	--- (ok)
@@ -208,7 +208,7 @@ mod GAME is
 			
 	--- (ok)
 	crl [stop-draw-forced] :
-		game(A' = A, Bp, Cp, Ca | D, G, false, false, Cou) => game(Bp, Cp, A' = Ca ~ A, D, G, false, false, Cou - 1) 
+		game(A' = A, Bp, Cp, Ca | D, G, false, false, Cou) => game(Bp, Cp, A' = Ca ~ A, D, G, false, false, 0) 
 			if Cou == 1 and not isFinished(A' = A, Bp, Cp) .
 			
 	--- (ok)
